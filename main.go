@@ -5,21 +5,20 @@ import (
 	"os"
 
 	"github.com/RyanLambrecht/catwalk/jsonio"
-	"github.com/RyanLambrecht/catwalk/models"
 )
 
-func startupAPI() (*jsonio.RecipeAPI, error) {
+func startupAPI() (jsonio.RecipeAPI, error) {
 	recipeFileLocation, err := jsonio.JsonParse()
 	if err != nil {
 		return nil, fmt.Errorf("error parsing JSON: %w", err)
 	}
 
-	itemRecipes, err := jsonio.LoadJsonFile[models.ItemRecipes](recipeFileLocation)
+	itemRecipes, err := jsonio.LoadJsonFile[jsonio.ItemRecipes](recipeFileLocation)
 	if err != nil {
 		return nil, fmt.Errorf("error loading JSON: %w", err)
 	}
 
-	api := jsonio.NewRecipeAPI(itemRecipes)
+	api := jsonio.NewrecipeAPI(itemRecipes)
 	return api, nil
 }
 
@@ -30,15 +29,15 @@ func main() {
 		os.Exit(1)
 
 	}
-	fmt.Printf("api hash: %v\n", api.GetHash())
+	fmt.Printf("api hash: %v\n", api.Hash())
 
-	tempItems := api.GetItems()
+	tempItems := api.Products()
 
 	//for _, i := range tempItem {
 	//	fmt.Println(i)
 	//}
 
-	fmt.Println(api.GetItemRecipes(tempItems[1]))
+	fmt.Println(api.ItemRecipes(tempItems[1]))
 }
 
 //if err != nil {

@@ -10,8 +10,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/RyanLambrecht/catwalk/models"
 )
 
 const RecipesOutputFile = "lib/recipes.json"
@@ -19,8 +17,8 @@ const RecipesOutputFile = "lib/recipes.json"
 var itemRegexp = regexp.MustCompile(`(Desc_\w+_C)'[^,]*,Amount=(\d+)`)
 var ProducedInRegExp = regexp.MustCompile(`\.(\w+_C)`)
 
-func refineRecipe(rawRecipe models.RawRecipe) models.RecipeInfo {
-	var recipe models.RecipeInfo
+func refineRecipe(rawRecipe RawRecipe) RecipeInfo {
+	var recipe RecipeInfo
 	var err error
 
 	recipe.DisplayName = rawRecipe.DisplayName
@@ -66,8 +64,8 @@ func refineRecipe(rawRecipe models.RawRecipe) models.RecipeInfo {
 	return recipe
 }
 
-func filterRecipes(entries []models.GameDataEntry, hash string) models.ItemRecipes {
-	filteredRecipes := models.ItemRecipes{Hash: hash, Item: make(map[string][]string), Recipes: make(map[string]models.RecipeInfo)}
+func filterRecipes(entries []GameDataEntry, hash string) ItemRecipes {
+	filteredRecipes := ItemRecipes{Hash: hash, Item: make(map[string][]string), Recipes: make(map[string]RecipeInfo)}
 
 	for _, entry := range entries {
 		for _, rawRecipe := range entry.Classes {
@@ -112,7 +110,7 @@ func checkExistingRecipes(filename, currentHash string) bool {
 	}
 
 	// File exists, load and check hash
-	existingRecipes, err := LoadJsonFile[models.ItemRecipes](filename)
+	existingRecipes, err := LoadJsonFile[ItemRecipes](filename)
 	if err != nil {
 		fmt.Printf("Error loading existing recipes: %v\n", err)
 		return false
@@ -169,15 +167,15 @@ func JsonParse() (string, error) {
 		return RecipesOutputFile, nil
 	}
 
-	var allEntries []models.GameDataEntry
-	allEntries, err = LoadJsonFile[[]models.GameDataEntry](filePath)
+	var allEntries []GameDataEntry
+	allEntries, err = LoadJsonFile[[]GameDataEntry](filePath)
 	if err != nil {
 		fmt.Printf("Error loading JSON: %v\n", err)
 		return "", err
 	}
 
 	// Find recipe entries
-	var recipeEntries []models.GameDataEntry
+	var recipeEntries []GameDataEntry
 	for _, entry := range allEntries {
 		if strings.Contains(entry.NativeClass, "FGRecipe") {
 			recipeEntries = append(recipeEntries, entry)
