@@ -17,7 +17,7 @@ const RecipesOutputFile = "lib/recipes.json"
 var itemRegexp = regexp.MustCompile(`(Desc_\w+_C)'[^,]*,Amount=(\d+)`)
 var ProducedInRegExp = regexp.MustCompile(`\.(\w+_C)`)
 
-func refineRecipe(rawRecipe RawRecipe) RecipeInfo {
+func refineRecipe(rawRecipe RawRecipe) (RecipeInfo, error) {
 	var recipe RecipeInfo
 	var err error
 
@@ -25,29 +25,29 @@ func refineRecipe(rawRecipe RawRecipe) RecipeInfo {
 
 	recipe.ManufacturingDuration, err = strconv.ParseFloat(rawRecipe.ManufacturingDuration, 64)
 	if err != nil {
-		fmt.Printf("error parsing ManufacturingDuration: %v\n", err)
-		os.Exit(1)
+		return recipe, fmt.Errorf("invalid ManufacturingDuration %f: %v", recipe.ManufacturingDuration, err)
 	}
 	recipe.VariablePowerConsumptionConstant, err = strconv.ParseFloat(rawRecipe.VariablePowerConsumptionConstant, 64)
 	if err != nil {
-		fmt.Printf("error parsing VariablePowerConsumptionConstant: %v\n", err)
-		os.Exit(1)
+		return recipe, fmt.Errorf("invalid VariablePowerConsumptionConstant %f: %v", recipe.VariablePowerConsumptionConstant, err)
 	}
 	recipe.VariablePowerConsumptionFactor, err = strconv.ParseFloat(rawRecipe.VariablePowerConsumptionFactor, 64)
 	if err != nil {
-		fmt.Printf("error parsing VariablePowerConsumptionFactor: %v\n", err)
-		os.Exit(1)
+		return recipe, fmt.Errorf("invalid VariablePowerConsumptionFactor %f: %v", recipe.VariablePowerConsumptionFactor, err)
 	}
 
 	ingredients := make(map[string]int)
 	for _, match := range itemRegexp.FindAllStringSubmatch(rawRecipe.Ingredients, -1) {
 		ingredients[match[1]], err = strconv.Atoi(match[2])
 		if err != nil {
-			fmt.Printf("error parsing ingredient amount: %v\n", err)
-			os.Exit(1)
+			return recipe, fmt.Errorf("invalid ingredient amount %s in recipe %s", match[2], rawRecipe.ClassName)
 		}
 	}
 	recipe.Ingredients = ingredients
+
+	if len(recipe.Ingredients) == 0 {
+		return recipe, fmt.Errorf("no ingredients parsed from: %s", rawRecipe.Ingredients)
+	}
 
 	product := make(map[string]int)
 	for _, match := range itemRegexp.FindAllStringSubmatch(rawRecipe.Product, -1) {
@@ -61,16 +61,21 @@ func refineRecipe(rawRecipe RawRecipe) RecipeInfo {
 
 	recipe.ProducedIn = ProducedInRegExp.FindStringSubmatch(rawRecipe.ProducedIn)[1]
 
-	return recipe
+	return recipe, nil
 }
 
-func filterRecipes(entries []GameDataEntry, hash string) ItemRecipes {
+func filterRecipes(entries []GameDataEntry, hash string) (ItemRecipes, error) {
 	filteredRecipes := ItemRecipes{Hash: hash, Item: make(map[string][]string), Recipes: make(map[string]RecipeInfo)}
 
 	for _, entry := range entries {
 		for _, rawRecipe := range entry.Classes {
 			if strings.Contains(rawRecipe.ProducedIn, "/Factory/") {
-				recipe := refineRecipe(rawRecipe)
+				recipe, err := refineRecipe(rawRecipe)
+				if err != nil {
+
+					return filteredRecipes, fmt.Errorf("error refining recipe %s: %w", rawRecipe.ClassName, err)
+
+				}
 				filteredRecipes.Recipes[rawRecipe.ClassName] = recipe
 				for product := range recipe.Product {
 					filteredRecipes.Item[product] = append(filteredRecipes.Item[product], rawRecipe.ClassName)
@@ -80,7 +85,7 @@ func filterRecipes(entries []GameDataEntry, hash string) ItemRecipes {
 		}
 	}
 
-	return filteredRecipes
+	return filteredRecipes, nil
 }
 
 func exportJson[T any](data T, fileName string) {
@@ -143,7 +148,7 @@ func LoadJsonFile[T any](filepath string) (T, error) {
 	return result, nil
 }
 
-func JsonParse() (string, error) {
+func JsonParseDocs() (string, error) {
 	var filePath string
 	if len(os.Args) == 2 {
 		filePath = os.Args[1]
@@ -183,7 +188,10 @@ func JsonParse() (string, error) {
 		}
 	}
 
-	filteredRecipes := filterRecipes(recipeEntries, hash)
+	filteredRecipes, err := filterRecipes(recipeEntries, hash)
+	if err != nil {
+		return "", fmt.Errorf("issue filtering recipes")
+	}
 	exportJson(filteredRecipes, RecipesOutputFile)
 
 	return RecipesOutputFile, nil

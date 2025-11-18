@@ -1,10 +1,26 @@
 package jsonio
 
 import (
+	"fmt"
 	"maps"
 	"slices"
 	"sort"
 )
+
+func InitalizeAPI() (RecipeAPI, error) {
+	recipeFileLocation, err := JsonParseDocs()
+	if err != nil {
+		return nil, fmt.Errorf("error parsing JSON: %w", err)
+	}
+
+	itemRecipes, err := LoadJsonFile[ItemRecipes](recipeFileLocation)
+	if err != nil {
+		return nil, fmt.Errorf("error loading JSON: %w", err)
+	}
+
+	api := NewrecipeAPI(itemRecipes)
+	return api, nil
+}
 
 type recipeAPI struct {
 	data        ItemRecipes

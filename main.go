@@ -5,32 +5,17 @@ import (
 	"os"
 
 	"github.com/RyanLambrecht/catwalk/jsonio"
+	"github.com/RyanLambrecht/catwalk/ui"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
-func startupAPI() (jsonio.RecipeAPI, error) {
-	recipeFileLocation, err := jsonio.JsonParse()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing JSON: %w", err)
-	}
-
-	itemRecipes, err := jsonio.LoadJsonFile[jsonio.ItemRecipes](recipeFileLocation)
-	if err != nil {
-		return nil, fmt.Errorf("error loading JSON: %w", err)
-	}
-
-	api := jsonio.NewrecipeAPI(itemRecipes)
-	return api, nil
-}
-
 func main() {
-	api, err := startupAPI()
+	api, err := jsonio.InitalizeAPI()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "startup failed: %v\n", err)
-		os.Exit(1)
+		panic(fmt.Sprintf("API startup failed: %v\n", err))
 
 	}
-	fmt.Printf("api hash: %v\n", api.Hash())
-
 	tempItems := api.Products()
 
 	//for _, i := range tempItem {
@@ -38,6 +23,12 @@ func main() {
 	//}
 
 	fmt.Println(api.ItemRecipes(tempItems[1]))
+
+	p := tea.NewProgram(ui.NewAppModel())
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("error: %v", err)
+		os.Exit(1)
+	}
 }
 
 //if err != nil {

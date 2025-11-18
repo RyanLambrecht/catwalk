@@ -1,4 +1,5 @@
 package factory
 
-func buildFactory() Factory {
+func GetUserData() {
+
 }
